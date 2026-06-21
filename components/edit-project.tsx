@@ -1,0 +1,333 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import { createBrowserClient } from "@supabase/ssr"
+import { Button } from "@/components/ui/button"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { ImageManagerModal } from "./image-manager-modal"
+import { fetchWithAuth } from "@/lib/api-client" // [Certain] Injeksi Klien Berotentikasi
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { InformationCircleIcon } from "@hugeicons/core-free-icons"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+
+interface ProjectData {
+    template_id: string;
+    content: Record<string, string>;
+    images: Record<string, string>;
+    theme?: string;
+}
+
+export default function EditProjectPage() {
+    // 1. Ambil ID dari URL (Ini adalah UUID dari Database)
+    const searchParams = useSearchParams();
+    const projectId = searchParams.get("id");
+
+    // 2. Project Data State
+    const [projectData, setProjectData] = useState<ProjectData | null>(null);
+    const [folderPath, setFolderPath] = useState<string | null>(null);
+    const [isLoadingInit, setIsLoadingInit] = useState(true);
+
+    // 3. UI State
+    const [changed, setChanged] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+    const [currentImageKey, setCurrentImageKey] = useState<string | null>(null)
+    const [currentImageSrc, setCurrentImageSrc] = useState<string | null>(null)
+    const [iframeRefreshKey, setIframeRefreshKey] = useState(0)
+
+    const iframeRef = useRef<HTMLIFrameElement>(null)
+
+    // 4. Tarik Translasi Folder dan Data JSON Asli
+    useEffect(() => {
+        if (!projectId) return;
+
+        const initializeEditor = async () => {
+            setIsLoadingInit(true);
+            try {
+                // A. Translasi UUID ke Folder Path menembus Supabase
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+                const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+                const supabase = createBrowserClient(supabaseUrl, supabaseKey);
+
+                const { data: dbData, error: dbError } = await supabase
+                    .from("projects")
+                    .select("folder_path")
+                    .eq("id", projectId)
+                    .single();
+
+                if (dbError || !dbData) {
+                    console.error("Proyek tidak ditemukan di Database:", dbError);
+                    setIsLoadingInit(false);
+                    return;
+                }
+
+                const actualFolderPath = dbData.folder_path;
+                setFolderPath(actualFolderPath);
+
+                // B. Sedot Source of Truth dari folder statis FastAPI menggunakan NAMA FOLDER ASLI
+                const res = await fetch(`https://diligent-overpay-stingray.ngrok-free.dev/projects/${actualFolderPath}/data.json`, {
+                    headers: {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    setProjectData({
+                        template_id: data.template_id || "unknown",
+                        content: data.content_dict || {},
+                        images: data.image_results || {},
+                        theme: "default"
+                    });
+                } else {
+                    console.error("Gagal menarik data.json. Peladen menolak permintaan.");
+                }
+            } catch (error) {
+                console.error("Error selama inisialisasi:", error);
+            } finally {
+                setIsLoadingInit(false);
+            }
+        };
+
+        initializeEditor();
+    }, [projectId]);
+
+    // 5. Dengarkan ketikan dari Iframe
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const data = event.data
+
+            if (!data || typeof data !== "object") return
+
+            switch (data.action) {
+                case "UPDATE_DATA":
+                    if (data.key && typeof data.value !== "undefined") {
+                        setProjectData(prev => {
+                            if (!prev) return prev;
+                            return {
+                                ...prev,
+                                content: {
+                                    ...prev.content,
+                                    [data.key]: data.value
+                                }
+                            }
+                        })
+                        setChanged(true)
+                    }
+                    break
+
+                case "OPEN_IMAGE_MODAL":
+                    if (data.key) {
+                        setCurrentImageKey(data.key)
+                        let rawSrc = data.currentSrc || "";
+
+                        // [Certain] Perbaikan URL gambar di Modal menggunakan folderPath
+                        if (rawSrc && !rawSrc.startsWith("http") && folderPath) {
+                            rawSrc = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/${rawSrc}`;
+                        }
+                        setCurrentImageSrc(rawSrc)
+                        setIsImageModalOpen(true)
+                    }
+                    break
+            }
+        }
+
+        window.addEventListener("message", handleMessage)
+        return () => window.removeEventListener("message", handleMessage)
+
+    }, [folderPath]) // folderPath masuk ke array dependensi agar selalu baru
+
+    // 6. Tangani pemilihan gambar dari Modal
+    const handleSelectImage = (key: string, newSrc: string) => {
+        setProjectData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                images: {
+                    ...prev.images,
+                    [key]: newSrc
+                }
+            }
+        })
+        setChanged(true)
+
+        // Perbarui visual Iframe secara instan
+        if (iframeRef.current && iframeRef.current.contentWindow) {
+            iframeRef.current.contentWindow.postMessage({
+                action: "UPDATE_IMAGE",
+                key: key,
+                src: newSrc
+            }, "*")
+        }
+    }
+
+    // 7. Jembatan Simpan ke FastAPI
+    const handleSave = () => {
+        setIsSaveDialogOpen(true);
+    }
+
+    const executeSave = async () => {
+        if (!projectId || !projectData) return;
+
+        setIsSaving(true);
+        console.log("Mencoba menyimpan project UUID:", projectId);
+
+        try {
+            // [Certain] Bantai fetch telanjang, gunakan fetchWithAuth!
+            const res = await fetchWithAuth(`/project/${projectId}/update`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    template_id: projectData.template_id,
+                    content: projectData.content,
+                    images: projectData.images,
+                    theme: projectData.theme
+                })
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                console.log("Update Berhasil", result);
+                setChanged(false);
+                setIsSaveDialogOpen(false);
+                setIframeRefreshKey(Date.now());
+            } else {
+                const err = await res.json();
+                alert(`Gagal menyimpan: ${err.detail || "Error backend"}`);
+            }
+        } catch (error) {
+            console.error("Gagal menghubungi backend", error);
+            alert("Gagal menghubungi backend.");
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    // 8. Perlindungan Anti-Render
+    if (!projectId || isLoadingInit) {
+        return (
+            <div className="flex h-full items-center justify-center bg-background text-muted-foreground text-sm font-medium animate-pulse">
+                Menginisialisasi Mesin Editor...
+            </div>
+        )
+    }
+
+    if (!folderPath) {
+        return (
+            <div className="flex h-full items-center justify-center bg-background text-destructive text-sm font-medium">
+                Gagal memuat proyek. Data hilang dari pangkalan data.
+            </div>
+        )
+    }
+
+    // [Certain] URL Iframe Dinamis dan Absolut menggunakan FOLDER PATH!
+    const iframeUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/index.html?mode=edit&t=${iframeRefreshKey}`;
+
+    return (
+        <div className="flex h-full flex-col">
+            {/* Topbar */}
+            <div className="relative flex h-[var(--header-height)] shrink-0 items-center justify-between border-b px-4">
+                {/* Left */}
+                <div className="flex items-center gap-3">
+                    <SidebarTrigger className="-ms-1 text-muted-foreground hover:text-foreground" />
+                    <h1 className="text-sm font-semibold text-foreground truncate max-w-[200px]" title={projectId}>
+                        {folderPath}
+                    </h1>
+                </div>
+
+                {/* Center */}
+                <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5">
+                    <h1 className="text-sm font-semibold text-foreground">
+                        Edit Mode
+                    </h1>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="p-1 text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <HugeiconsIcon icon={InformationCircleIcon} className="size-4" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[220px]">
+                                <div className="text-xs font-medium">Click any text or any images on your website to edit it</div>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+
+                {/* Right */}
+                <div className="flex items-center gap-5">
+                    <button className="text-sm font-medium hover:opacity-80 hover:underline">
+                        Project Details
+                    </button>
+
+                    <Button
+                        disabled={!changed || isSaving || !projectData}
+                        onClick={handleSave}
+                        className="rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 h-8"
+                    >
+                        {isSaving ? "Menyimpan..." : "Save"}
+                    </Button>
+                </div>
+            </div>
+
+            {/* Main Container */}
+            <div className="mx-4 mb-4 mt-2 flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                {/* Iframe Area */}
+                <div className="relative flex h-full w-full flex-1 items-center justify-center bg-card">
+                    <iframe
+                        ref={iframeRef}
+                        src={iframeUrl}
+                        className="absolute inset-0 h-full w-full border-0 bg-white"
+                        title="Website Editor"
+                    />
+                </div>
+            </div>
+
+            <ImageManagerModal
+                open={isImageModalOpen}
+                onOpenChange={setIsImageModalOpen}
+                currentImageKey={currentImageKey}
+                currentImageSrc={currentImageSrc}
+                onSelectImage={handleSelectImage}
+                projectId={projectId}
+            />
+
+            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirmation</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to save changes? Your website will be updated immediately.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)} disabled={isSaving}>
+                            Cancel
+                        </Button>
+                        <Button onClick={executeSave} disabled={isSaving}>
+                            {isSaving ? "Saving..." : "Save"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}
