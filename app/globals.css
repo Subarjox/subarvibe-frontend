@@ -90,6 +90,9 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  .main-grid-bg {
     background-image: radial-gradient(#333 1px, transparent 1px);
     background-size: 24px 24px;
   }

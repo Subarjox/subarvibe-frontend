@@ -66,9 +66,9 @@ export function ProjectCards({ initialProjects }: { initialProjects: Project[] }
                     {/* Status Badge (queued, generating, ready) */}
                     <div className="absolute left-4 top-4 z-20">
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${proj.status === 'ready' ? 'bg-green-100 text-green-800' :
-                                proj.status === 'generating' ? 'bg-blue-100 text-blue-800 animate-pulse' :
-                                    proj.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
+                            proj.status === 'generating' ? 'bg-blue-100 text-blue-800 animate-pulse' :
+                                proj.status === 'failed' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
                             }`}>
                             {proj.status.toUpperCase()}
                         </span>
@@ -120,11 +120,10 @@ export function ProjectCards({ initialProjects }: { initialProjects: Project[] }
                                 {proj.business_name}
                             </CardTitle>
                             <CardDescription className="mt-1 line-clamp-2 text-sm">
-                                {/* [Likely] Mengambil deskripsi dari JSONB jika ada, jika tidak pakai fallback */}
                                 {proj.content_data?.business_description || "Awaiting AI generation..."}
                             </CardDescription>
                             <div className="mt-2 text-xs text-muted-foreground">
-                                {new Date(proj.created_at).toLocaleDateString()}
+                                {new Date(proj.created_at).toLocaleDateString("en-GB")}
                             </div>
                         </div>
                     </CardContent>

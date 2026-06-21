@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Search01Icon, MagicWand01Icon } from "@hugeicons/core-free-icons"
+import { fetchWithAuth } from "@/lib/api-client"
 
 interface ImageManagerModalProps {
   open: boolean
@@ -52,20 +53,18 @@ export function ImageManagerModal({
 
     try {
       // Menembak langsung ke rute pelabuhan gambar FastAPI
-      const res = await fetch(`https://diligent-overpay-stingray.ngrok-free.dev/project/${projectId}/upload-image`, {
+      const res = await fetchWithAuth(`/project/${projectId}/upload-image`, {
         method: "POST",
         body: formData,
       })
 
       if (res.ok) {
         const data = await res.json()
-        // [Certain] Melempar full_url mutlak (https://diligent-overpay-stingray.ngrok-free.dev/...) ke Iframe
-        const finalImageUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${projectId}/${data.src}`;
+        console.log("Upload berhasil. Data dari server:", data);
+        // const finalImageUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${projectId}/${data.src}`;
 
-        // Lempar URL yang sudah dienkripsi HTTPS ini ke EditProjectPage
-        onSelectImage(currentImageKey, finalImageUrl);
+        onSelectImage(data.key, data.src);
 
-        // Tutup modal
         onOpenChange(false);
       } else {
         alert("Upload Failed")
@@ -99,7 +98,7 @@ export function ImageManagerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]">1
         <DialogHeader>
           <DialogTitle>Update Image: {currentImageKey}</DialogTitle>
           {/* [Certain] Komponen tersembunyi untuk membungkam peringatan aksesibilitas UI Shadcn */}
