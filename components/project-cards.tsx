@@ -32,6 +32,7 @@ interface Project {
     status: string
     created_at: string
     content_data: any // JSONB dari Supabase
+    folder_path: string;
 }
 
 export function ProjectCards({ initialProjects }: { initialProjects: Project[] }) {
@@ -110,8 +111,16 @@ export function ProjectCards({ initialProjects }: { initialProjects: Project[] }
 
                     <CardContent className="p-3">
                         {/* Area Thumbnail */}
-                        <div className="flex h-[250px] items-center justify-center rounded-xl border border-border bg-muted overflow-hidden">
-                            <HugeiconsIcon icon={Image01Icon} strokeWidth={1.5} className="size-12 text-muted-foreground" />
+                        <div className="flex h-[250px] w-full items-center justify-center rounded-xl border border-border bg-muted overflow-hidden">
+                            <img
+                                src={`https://diligent-overpay-stingray.ngrok-free.dev/projects/${proj.folder_path}/thumbnail.jpg?t=${new Date(proj.created_at).getTime()}`}
+                                alt={proj.business_name}
+                                className="object-cover w-full h-full object-top transition-transform duration-300 group-hover:scale-105"
+                                // Fallback mutlak: jika Playwright belum selesai memotret di latar belakang, tampilkan placeholder abu-abu
+                                onError={(e) => {
+                                    e.currentTarget.src = "https://placehold.co/600x400/18181b/71717a?text=Generating+Preview..."
+                                }}
+                            />
                         </div>
 
                         {/* Ekstraksi Konten Dinamis */}

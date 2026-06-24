@@ -26,19 +26,12 @@ const data = {
   },
   navMain: [
     {
-      title: "Dashboard",
-      url: "/",
-      icon: (
-        <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />
-      ),
-    },
-    {
       title: "Projects",
       url: "/project",
       icon: (
-        <HugeiconsIcon icon={Folder01Icon} strokeWidth={2} />
+        <HugeiconsIcon icon={DashboardSquare01Icon} strokeWidth={2} />
       ),
-    },
+    }
   ],
   navSecondary: [
     {
@@ -77,7 +70,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <a href="#">
+              <a href="/project">
                 <HugeiconsIcon icon={CommandIcon} strokeWidth={2} className="size-5!" />
                 <span className="text-base font-semibold">Subarvibe</span>
               </a>

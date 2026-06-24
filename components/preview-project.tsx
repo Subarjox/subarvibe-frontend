@@ -24,8 +24,10 @@ export default function PreviewProjectPage() {
     // State untuk menerjemahkan UUID ke Folder Path
     const [folderPath, setFolderPath] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [iframeRefreshKey, setIframeRefreshKey] = useState(0)
 
     useEffect(() => {
+        setIframeRefreshKey(Date.now())
         if (!projectId) return
 
         const fetchProjectDetails = async () => {
@@ -74,7 +76,8 @@ export default function PreviewProjectPage() {
     }
 
     // [Likely] Arahkan ke Ngrok menggunakan FOLDER PATH, bukan UUID!
-    const iframeUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/index.html`
+    // Menambahkan cache busting parameter ?t=... agar iframe memuat versi paling baru
+    const iframeUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/index.html?t=${iframeRefreshKey}`
 
     return (
         <div className="flex h-full flex-col">

@@ -10,7 +10,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ChartUpIcon, ChartDownIcon, RoboticIcon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
+import { ChartUpIcon, ChartDownIcon, RoboticIcon, CheckmarkCircle01Icon, PieChartIcon } from "@hugeicons/core-free-icons"
 
 export function ModelSectionCard() {
     return (
@@ -37,7 +37,7 @@ export function ModelSectionCard() {
                         <HugeiconsIcon icon={ChartUpIcon} strokeWidth={2} className="size-4" />
                     </div>
                     <div className="text-muted-foreground">
-                        Visitors for the last 6 months
+                        9B - Version of the model
                     </div>
                 </CardFooter>
             </Card>
@@ -45,22 +45,22 @@ export function ModelSectionCard() {
                 <CardHeader>
                     <CardDescription>Total Template (Dataset  ) :</CardDescription>
                     <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                        73
+                        75
                     </CardTitle>
                     <CardAction>
-                        <Badge variant="outline">
-                            <HugeiconsIcon icon={ChartDownIcon} strokeWidth={2} />
-                            -20%
+                        <Badge variant="default">
+                            <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={3} />
+                            Active
                         </Badge>
                     </CardAction>
                 </CardHeader>
                 <CardFooter className="flex-col items-start gap-1.5 text-sm">
                     <div className="line-clamp-1 flex gap-2 font-medium">
-                        Down 20% this period{" "}
-                        <HugeiconsIcon icon={ChartDownIcon} strokeWidth={2} className="size-4" />
+                        60 Theme-locked - 15 Theme-Free{" "}
+                        <HugeiconsIcon icon={PieChartIcon} strokeWidth={2} className="size-4" />
                     </div>
                     <div className="text-muted-foreground">
-                        Acquisition needs attention
+                        The dataset used for training the model
                     </div>
                 </CardFooter>
             </Card>

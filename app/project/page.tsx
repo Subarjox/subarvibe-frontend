@@ -26,7 +26,7 @@ export default async function Page() {
   // [Certain] Sedot data proyek berdasarkan sesi aktif saat ini
   const { data: projects, error } = await supabase
     .from("projects")
-    .select("id, business_name, status, created_at, content_data")
+    .select("id, business_name, status, created_at, content_data,  folder_path")
     .order("created_at", { ascending: false })
 
   if (error) {

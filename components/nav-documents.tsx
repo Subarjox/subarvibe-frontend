@@ -59,11 +59,11 @@ export function NavDocuments({
               >
                 <DropdownMenuItem>
                   <HugeiconsIcon icon={FolderOpenIcon} />
-                  <span>Open</span>
+                  <span>Preview</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <HugeiconsIcon icon={Share01Icon} strokeWidth={2} />
-                  <span>Share</span>
+                  <span>Edit</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">
