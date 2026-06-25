@@ -18,7 +18,7 @@ export default function GeneratingPage() {
                 <SidebarInset>
                     <SiteHeader pageName="Add New Projects" />
                     <div className="flex flex-1 flex-col">
-                        <GeneratingView />
+                        <GeneratingView templateName="Neon_Dark_V3" imageMethod="stock_image" />
                     </div>
                 </SidebarInset>
             </TooltipProvider>

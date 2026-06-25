@@ -3,19 +3,19 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-export function GeneratingView() {
-    const [progress, setProgress] = useState(45)
+export function GeneratingView({ templateName, imageMethod }: { templateName: string, imageMethod: string }) {
+    const [progress, setProgress] = useState(0)
 
-    // Simulasi progress bar berjalan
     useEffect(() => {
         const interval = setInterval(() => {
             setProgress(prev => {
-                if (prev >= 90) return prev
-                return prev + 1
+                if (prev >= 95) return prev
+                return prev + (Math.random() * 5)
             })
-        }, 500)
+        }, 800)
         return () => clearInterval(interval)
     }, [])
+
 
     return (
         <div className="relative w-full flex-1 overflow-hidden selection:bg-primary selection:text-primary-foreground flex flex-col">
@@ -29,18 +29,17 @@ export function GeneratingView() {
                         </h1>
                     </div>
 
-                    {/* Details Grid */}
                     <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start gap-8 text-sm md:text-base font-semibold tracking-wider">
-                        {/* Left Details */}
                         <div className="space-y-4">
-                            <p>Template : Neon_Dark_V3</p>
-                            <p>Image Generation : Stock Image</p>
+                            <p>Template :{templateName}</p>
+                            <p>Image Generation :{imageMethod.replace("_", " ")}</p>
                         </div>
+
 
                         {/* Right Details */}
                         <div className="md:text-right">
                             <p>
-                                Estimated Time ≈ <span className="text-primary text-xl font-bold ml-2 mr-2">3</span> Minutes
+                                Estimated Time ≈ <span className="text-primary text-xl font-bold ml-2 mr-2">1 - 3</span> Minutes
                             </p>
                         </div>
                     </div>
