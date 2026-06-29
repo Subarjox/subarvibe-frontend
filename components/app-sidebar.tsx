@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { useEffect, useState } from "react"
+import { createBrowserClient } from "@supabase/ssr"
 
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
@@ -61,6 +63,33 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [latestProjects, setLatestProjects] = useState<any[]>(data.Latest_Projects)
+
+  useEffect(() => {
+    const fetchLatestProjects = async () => {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+      const supabase = createBrowserClient(supabaseUrl, supabaseKey)
+
+      const { data: projects, error } = await supabase
+        .from("projects")
+        .select("id, business_name")
+        .order("created_at", { ascending: false })
+        .limit(7)
+
+      if (!error && projects && projects.length > 0) {
+        const formattedProjects = projects.map((proj) => ({
+          name: proj.business_name || "Untitled Project",
+          url: `/preview?id=${proj.id}`,
+          icon: <HugeiconsIcon icon={WebDesign02Icon} strokeWidth={2} />,
+          id: proj.id
+        }))
+        setLatestProjects(formattedProjects)
+      }
+    }
+    fetchLatestProjects()
+  }, [])
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -80,8 +109,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavDocuments items={data.Latest_Projects} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavDocuments items={latestProjects} />
+        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

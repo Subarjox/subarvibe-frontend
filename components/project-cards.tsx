@@ -15,15 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-    MoreHorizontalCircle01Icon,
-    FolderOpenIcon,
-    Download04Icon,
-    PencilEdit02Icon,
-    Delete02Icon,
-    Image01Icon,
-    AddCircleIcon
-} from "@hugeicons/core-free-icons"
+import { Delete02Icon, Download04Icon, PencilEdit02Icon, FolderOpenIcon, MoreHorizontalCircle01Icon, AddCircleIcon } from "@hugeicons/core-free-icons"
+import { useState } from "react"
+import { DeleteProjectDialog } from "./delete-project-dialog"
+import { handleDownloadProject } from "@/lib/download-project"
 
 // [Likely] Definisikan struktur data proyek agar TypeScript tidak marah
 interface Project {
@@ -36,8 +31,15 @@ interface Project {
 }
 
 export function ProjectCards({ initialProjects }: { initialProjects: Project[] }) {
+    const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null)
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 px-4 lg:px-6">
+            <DeleteProjectDialog
+                open={!!deleteProjectId}
+                onOpenChange={(open) => !open && setDeleteProjectId(null)}
+                projectId={deleteProjectId}
+            />
 
             {/* Kartu Tombol Create Tetap Statis di Depan */}
             <Card className="group cursor-pointer rounded-xl border border-dashed border-border bg-card transition-all duration-200 hover:border-zinc-700 dark:hover:border-zinc-300 hover:bg-muted/40">
@@ -90,7 +92,10 @@ export function ProjectCards({ initialProjects }: { initialProjects: Project[] }
                                         Open
                                     </DropdownMenuItem>
                                 </Link>
-                                <DropdownMenuItem className="cursor-pointer gap-2">
+                                <DropdownMenuItem 
+                                    className="cursor-pointer gap-2"
+                                    onClick={() => handleDownloadProject(proj.id, proj.business_name)}
+                                >
                                     <HugeiconsIcon icon={Download04Icon} strokeWidth={2} className="size-4" />
                                     Download
                                 </DropdownMenuItem>
@@ -100,8 +105,11 @@ export function ProjectCards({ initialProjects }: { initialProjects: Project[] }
                                         Edit
                                     </DropdownMenuItem>
                                 </Link>
-                                {/* Eksekutor Delete akan kita tempelkan di sini nanti */}
-                                <DropdownMenuItem className="cursor-pointer gap-2 text-red-500 focus:text-red-500">
+                                {/* Eksekutor Delete */}
+                                <DropdownMenuItem
+                                    className="cursor-pointer gap-2 text-red-500 focus:text-red-500"
+                                    onClick={() => setDeleteProjectId(proj.id)}
+                                >
                                     <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="size-4" />
                                     Delete
                                 </DropdownMenuItem>

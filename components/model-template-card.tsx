@@ -56,7 +56,7 @@ export function ModelSectionCard() {
                 </CardHeader>
                 <CardFooter className="flex-col items-start gap-1.5 text-sm">
                     <div className="line-clamp-1 flex gap-2 font-medium">
-                        60 Theme-locked - 15 Theme-Free{" "}
+                        75 Template{" "}
                         <HugeiconsIcon icon={PieChartIcon} strokeWidth={2} className="size-4" />
                     </div>
                     <div className="text-muted-foreground">

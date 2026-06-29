@@ -13,7 +13,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-
+import { toast } from "sonner"
 
 export function LoginForm({
   className,
@@ -43,6 +43,7 @@ export function LoginForm({
 
     if (!isLogin && password !== confirmPassword) {
       setErrorMsg("Passwords do not match")
+      toast.error("Passwords do not match")
       setIsLoading(false)
       return
     }
@@ -55,12 +56,14 @@ export function LoginForm({
 
       if (error) {
         setErrorMsg(error.message)
+        toast.error(`Login failed: ${error.message}`)
         setIsLoading(false)
         return
       }
 
       // Login sukses!
       console.log("Login sukses. Membawa klien ke dasbor...")
+      toast.success("Login Success! Welcome back.")
       router.refresh() // [Certain] Paksa Next.js membaca Cookie baru
       router.push("/project")
     } else {
@@ -76,6 +79,7 @@ export function LoginForm({
 
       if (error) {
         setErrorMsg(error.message)
+        toast.error(`Sign up failed: ${error.message}`)
         setIsLoading(false)
         return
       }
@@ -83,11 +87,13 @@ export function LoginForm({
       // [Certain] Cek apakah Supabase langsung memberikan sesi, atau menahannya
       if (data.session) {
         console.log("Sign up sukses. Membawa klien ke dasbor...")
+        toast.success("Account Created Successfully!")
         router.refresh() // [Certain] Paksa Next.js membaca Cookie baru
         router.push("/project")
       } else {
         // Ini terjadi jika 'Confirm Email' menyala di dasbor Supabase
         setErrorMsg("Registration successful! Please check your email to confirm your account.")
+        toast.success("Registration successful! Check your email to confirm.")
         setIsLoading(false)
         setIsLogin(true) // Kembalikan UI ke mode login
       }

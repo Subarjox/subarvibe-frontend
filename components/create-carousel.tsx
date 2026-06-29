@@ -114,17 +114,41 @@ export function CreateCarousel() {
 
             if (res.ok) {
                 const data = await res.json()
-                console.log("[SUCCESS] Proyek Berhasil Diciptakan:", data)
-                router.refresh()
-                router.push(`/preview?id=${data.project_id}`)
+                console.log("[SUCCESS] Proyek mulai diproses:", data)
+                const projectId = data.project_id
+
+                // [Certain] Mekanisme Polling: Cek status tiap 5 detik
+                while (true) {
+                    await new Promise(resolve => setTimeout(resolve, 5000)) // Tunggu 5 detik
+                    try {
+                        const statusRes = await fetchWithAuth(`/generate/status/${projectId}`)
+                        if (statusRes.ok) {
+                            const statusData = await statusRes.json()
+                            if (statusData.status === "ready") {
+                                console.log("[SUCCESS] Proyek selesai digenerate!")
+                                router.refresh()
+                                router.push(`/preview?id=${projectId}`)
+                                return // Selesai, hentikan fungsi
+                            } else if (statusData.status === "failed") {
+                                alert("Mohon maaf, terjadi kegagalan sistem saat membuat proyek.")
+                                setIsCreatingProject(false)
+                                return // Keluar dari loop
+                            }
+                            // Jika masih generating, teruskan loop
+                        }
+                    } catch (err) {
+                        console.error("Gagal mengecek status, mencoba lagi...", err)
+                    }
+                }
             } else {
                 const err = await res.json()
                 console.error("[VALIDATION ERROR]", err.detail)
+                alert(`Error: ${err.detail}`)
+                setIsCreatingProject(false)
             }
         } catch (error) {
-            console.error(error)
-            alert("Koneksi ke mesin Generator terputus.")
-        } finally {
+            console.error("Gagal menyambung ke server:", error)
+            alert("Koneksi ke server terputus.")
             setIsCreatingProject(false)
         }
     }

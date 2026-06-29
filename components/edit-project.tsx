@@ -6,6 +6,7 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ImageManagerModal } from "./image-manager-modal"
+import { ProjectDetailDrawer } from "./project-detail-drawer"
 import { fetchWithAuth } from "@/lib/api-client" // [Certain] Injeksi Klien Berotentikasi
 import {
     Tooltip,
@@ -23,6 +24,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { toast } from "sonner"
 
 interface ProjectData {
     template_id: string;
@@ -202,16 +204,17 @@ export default function EditProjectPage() {
             if (res.ok) {
                 const result = await res.json();
                 console.log("Update Berhasil", result);
+                toast.success("Edit Success! Project saved successfully.");
                 setChanged(false);
                 setIsSaveDialogOpen(false);
                 setIframeRefreshKey(Date.now());
             } else {
                 const err = await res.json();
-                alert(`Gagal menyimpan: ${err.detail || "Error backend"}`);
+                toast.error(`Gagal menyimpan: ${err.detail || "Error backend"}`);
             }
         } catch (error) {
             console.error("Gagal menghubungi backend", error);
-            alert("Gagal menghubungi backend.");
+            toast.error("Gagal menghubungi backend.");
         } finally {
             setIsSaving(false);
         }
@@ -274,9 +277,14 @@ export default function EditProjectPage() {
 
                 {/* Right */}
                 <div className="flex items-center gap-5">
-                    <button className="text-sm font-medium hover:opacity-80 hover:underline">
-                        Project Details
-                    </button>
+                    <ProjectDetailDrawer
+                        projectId={projectId}
+                        trigger={
+                            <button className="text-sm font-medium hover:opacity-80 hover:underline">
+                                Project Details
+                            </button>
+                        }
+                    />
 
                     <Button
                         disabled={!changed || isSaving || !projectData}

@@ -1,5 +1,10 @@
 "use client"
 
+import Link from "next/link"
+import { useState } from "react"
+import { DeleteProjectDialog } from "./delete-project-dialog"
+import { handleDownloadProject } from "@/lib/download-project"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +22,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { MoreHorizontalCircle01Icon, FolderOpenIcon, Share01Icon, Delete02Icon } from "@hugeicons/core-free-icons"
+import { MoreHorizontalCircle01Icon, FolderOpenIcon, Share01Icon, Delete02Icon, Download04Icon } from "@hugeicons/core-free-icons"
 
 export function NavDocuments({
   items,
@@ -26,15 +31,22 @@ export function NavDocuments({
     name: string
     url: string
     icon: React.ReactNode
+    id?: string
   }[]
 }) {
   const { isMobile } = useSidebar()
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null)
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+      <DeleteProjectDialog
+        open={!!deleteProjectId}
+        onOpenChange={(open) => !open && setDeleteProjectId(null)}
+        projectId={deleteProjectId}
+      />
       <SidebarGroupLabel>Latest Project</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {items.slice(0, 7).map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
               <a href={item.url}>
@@ -57,27 +69,38 @@ export function NavDocuments({
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem>
-                  <HugeiconsIcon icon={FolderOpenIcon} />
-                  <span>Preview</span>
+                <DropdownMenuItem asChild>
+                  <Link href={`/preview?id=${item.id}`}>
+                    <HugeiconsIcon icon={FolderOpenIcon} />
+                    <span>Preview</span>
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <HugeiconsIcon icon={Share01Icon} strokeWidth={2} />
-                  <span>Edit</span>
+                <DropdownMenuItem asChild>
+                  <Link href={`/edit?id=${item.id}`}>
+                    <HugeiconsIcon icon={Share01Icon} strokeWidth={2} />
+                    <span>Edit</span>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem onClick={() => handleDownloadProject(item.id || "", item.name)}>
+                  <HugeiconsIcon icon={Download04Icon} strokeWidth={2} />
+                  <span>Download</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={() => setDeleteProjectId(item.id || null)}>
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} />
-                  <span>Delete</span>
+                  <span className="destructive" >Delete</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
         <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <HugeiconsIcon icon={MoreHorizontalCircle01Icon} strokeWidth={2} className="text-sidebar-foreground/70" />
-            <span>More</span>
+          <SidebarMenuButton asChild className="text-sidebar-foreground/70">
+            <Link href="/project">
+              <HugeiconsIcon icon={MoreHorizontalCircle01Icon} strokeWidth={2} className="text-sidebar-foreground/70" />
+              <span>More</span>
+            </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

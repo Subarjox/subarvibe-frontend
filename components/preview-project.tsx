@@ -15,6 +15,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { InformationCircleIcon } from "@hugeicons/core-free-icons"
 import Link from "next/link"
+import { ProjectDetailDrawer } from "./project-detail-drawer"
 
 export default function PreviewProjectPage() {
     // [Certain] Tangkap ID proyek dari URL
@@ -116,9 +117,14 @@ export default function PreviewProjectPage() {
 
                 {/* Right */}
                 <div className="flex items-center gap-5">
-                    <button className="text-sm font-medium hover:opacity-80 hover:underline">
-                        Project Details
-                    </button>
+                    <ProjectDetailDrawer
+                        projectId={projectId}
+                        trigger={
+                            <button className="text-sm font-medium hover:opacity-80 hover:underline">
+                                Project Details
+                            </button>
+                        }
+                    />
 
                     <Link href={`/edit?id=${projectId}`}>
                         <Button
