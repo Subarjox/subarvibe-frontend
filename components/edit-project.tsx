@@ -155,15 +155,20 @@ export default function EditProjectPage() {
     }, [folderPath]) // folderPath masuk ke array dependensi agar selalu baru
 
     // 6. Tangani pemilihan gambar dari Modal
-    const handleSelectImage = (key: string, newSrc: string) => {
+    const handleSelectImage = async (key: string, newSrc: string) => {
+        // [Certain] Bangun objek gambar terbaru terlebih dahulu SEBELUM update state,
+        // karena setState bersifat asinkron — jika langsung baca state setelah set,
+        // nilainya belum tentu yang terbaru saat executeSaveImages dipanggil.
+        const updatedImages = {
+            ...(projectData?.images || {}),
+            [key]: newSrc
+        };
+
         setProjectData(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                images: {
-                    ...prev.images,
-                    [key]: newSrc
-                }
+                images: updatedImages
             }
         })
         setChanged(true)
@@ -175,6 +180,38 @@ export default function EditProjectPage() {
                 key: key,
                 src: newSrc
             }, "*")
+        }
+
+        // [Certain] Auto-save ke backend setelah upload gambar selesai.
+        // Tanpa ini, jika ekstensi berubah (contoh: .png → .jpg), database Supabase
+        // masih menyimpan path lama. Saat user refresh, iframe akan load gambar lama.
+        // Tidak perlu dialog konfirmasi — user sudah mengkonfirmasi via aksi upload.
+        if (projectId && projectData) {
+            try {
+                const res = await fetchWithAuth(`/project/${projectId}/update`, {
+                    method: "PUT",
+                    body: JSON.stringify({
+                        template_id: projectData.template_id,
+                        content: projectData.content,
+                        images: updatedImages,
+                        theme: projectData.theme
+                    })
+                });
+
+                if (res.ok) {
+                    console.log("[AUTO-SAVE] Ekstensi gambar berhasil disinkronisasi ke database.");
+                    toast.success("Image updated and saved.");
+                    setChanged(false);
+                    setIframeRefreshKey(Date.now());
+                } else {
+                    // Gagal auto-save — tidak fatal, user masih bisa manual save
+                    console.warn("[AUTO-SAVE] Gagal sinkronisasi ke backend. User perlu manual save.");
+                    toast.warning("Image updated locally. Don't forget to save your project.");
+                }
+            } catch (error) {
+                console.warn("[AUTO-SAVE] Koneksi terputus saat auto-save:", error);
+                toast.warning("Image updated locally. Don't forget to save your project.");
+            }
         }
     }
 

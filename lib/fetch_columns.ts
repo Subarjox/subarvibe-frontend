@@ -13,7 +13,7 @@ export async function fetchProjectColumns(projectId: string) {
 
     const { data, error } = await supabase
         .from("projects")
-        .select("business_name, created_at, updated_at, content_data, folder_path")
+        .select("business_name, created_at, updated_at, content_data, folder_path, public_url")
         .eq("id", projectId)
         .single()
 

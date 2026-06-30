@@ -61,9 +61,15 @@ export function ImageManagerModal({
       if (res.ok) {
         const data = await res.json()
         console.log("Upload berhasil. Data dari server:", data);
-        // const finalImageUrl = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${projectId}/${data.src}`;
 
-        onSelectImage(data.key, data.src);
+        // [Certain] Tambahkan cache-busting timestamp agar browser WAJIB memuat
+        // gambar baru dari server, bukan dari cache — krusial saat ekstensi berubah
+        // (contoh: .png → .jpg). Tanpa ini, browser menolak fetch ulang karena
+        // menganggap URL "sama" secara path, padahal file fisiknya sudah berbeda.
+        const timestamp = Date.now();
+        const srcWithCacheBust = `${data.src}?v=${timestamp}`;
+
+        onSelectImage(data.key, srcWithCacheBust);
 
         onOpenChange(false);
       } else {
