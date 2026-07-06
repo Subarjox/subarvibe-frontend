@@ -16,6 +16,7 @@ Frontend ini **bukan** situs publik biasa — ia adalah **dashboard aplikasi ber
 | **Manajemen Proyek** | Pengguna dapat membuat, melihat, mengedit, mengunduh, dan menghapus proyek website mereka |
 | **Preview Real-time** | Hasil generasi website dapat langsung dilihat di dalam dashboard melalui iframe |
 | **Editing In-line** | Pengguna dapat mengklik teks atau gambar langsung di dalam preview untuk mengeditnya |
+| **Publish ke Internet** | Pengguna dapat mempublikasikan website ke Surge.sh langsung dari drawer detail proyek |
 
 ---
 
@@ -51,7 +52,10 @@ Frontend ini **bukan** situs publik biasa — ia adalah **dashboard aplikasi ber
 |---|---|---|
 | **@dnd-kit/core** | 6.3.1 | Drag-and-drop foundation |
 | **@dnd-kit/sortable** | 10.0.0 | Sortable drag-and-drop list |
+| **@dnd-kit/modifiers** | 9.0.0 | Modifikasi behavior drag-and-drop |
+| **@dnd-kit/utilities** | 3.2.2 | Utilitas pembantu dnd-kit |
 | **@hugeicons/react** | 1.1.6 | Icon library (HugeIcons) |
+| **@hugeicons/core-free-icons** | 4.1.1 | Paket ikon gratis HugeIcons |
 | **sonner** | 2.0.7 | Toast notification sistem |
 | **vaul** | 1.1.2 | Drawer/sheet component |
 | **next-themes** | 0.4.6 | Dark mode & theme management |
@@ -78,7 +82,7 @@ subarvibe-frontend/
 │   ├── data.json               # Data statis untuk dashboard dev
 │   ├── login/                  # Halaman autentikasi
 │   ├── project/                # Halaman daftar proyek (SSR)
-│   ├── create/                 # Halaman pembuatan proyek baru
+│   ├── create/                 # Halaman pembuatan proyek baru (wizard carousel)
 │   ├── create_v2/              # Versi alternatif halaman create
 │   ├── edit/                   # Halaman editor website
 │   ├── preview/                # Halaman preview website
@@ -87,19 +91,22 @@ subarvibe-frontend/
 │   ├── ui/                     # Komponen shadcn/ui (primitives)
 │   ├── app-sidebar.tsx         # Sidebar navigasi utama
 │   ├── create-carousel.tsx     # Wizard pembuatan proyek (3 langkah)
-│   ├── create-dialog.tsx       # Dialog create proyek (versi lama)
-│   ├── edit-project.tsx        # Editor proyek dengan iframe dua arah
+│   ├── create-dialog.tsx       # Dialog create proyek (versi lama/legacy)
+│   ├── edit-project.tsx        # Editor proyek dengan iframe dua arah + style injector
 │   ├── preview-project.tsx     # Preview website dalam iframe
 │   ├── project-cards.tsx       # Grid kartu semua proyek
-│   ├── project-detail-drawer.tsx # Drawer detail proyek (shadcn Sheet)
-│   ├── image-manager-modal.tsx # Modal manajemen gambar
+│   ├── project-detail-drawer.tsx # Drawer detail proyek + fitur Publish ke Surge
+│   ├── image-manager-modal.tsx # Modal manajemen gambar (hanya tab Upload aktif)
 │   ├── login-form.tsx          # Form login & registrasi
 │   ├── generating-view.tsx     # UI loading state saat generate
 │   ├── template-pick-card.tsx  # Kartu pemilihan template
 │   ├── model-template-card.tsx # Kartu info model AI
 │   ├── nav-main.tsx            # Navigasi utama sidebar
 │   ├── nav-documents.tsx       # Daftar proyek terbaru di sidebar
+│   ├── nav-secondary.tsx       # [BARU] Navigasi sekunder sidebar (link generik)
 │   ├── nav-user.tsx            # Info user di footer sidebar
+│   ├── new-project-card.tsx    # [BARU] Kartu proyek versi UI baru (belum terhubung data)
+│   ├── new-project.tsx         # [BARU] Halaman create proyek versi lama (progress + accordion)
 │   ├── site-header.tsx         # Header halaman
 │   ├── data-table.tsx          # Tabel data generik
 │   ├── chart-area-interactive.tsx # Chart interaktif (dashboard)
@@ -110,7 +117,7 @@ subarvibe-frontend/
 │   ├── api-client.ts           # HTTP client dengan JWT injection
 │   ├── api.ts                  # Definisi endpoint API
 │   ├── download-project.ts     # Logic download project ke ZIP
-│   ├── fetch_columns.ts        # Helper fetch data Supabase
+│   ├── fetch_columns.ts        # Helper fetch data Supabase (incl. public_url)
 │   └── utils.ts                # Utility umum (cn, dll)
 ├── hooks/                      # Custom React hooks
 ├── public/                     # File statis publik
@@ -281,14 +288,23 @@ Selama polling, layar berganti ke `GeneratingView` — animasi loading yang mena
 - Saat pengguna klik gambar di website dalam iframe → iframe mengirim pesan `OPEN_IMAGE_MODAL`
 - Modal `ImageManagerModal` terbuka, pengguna bisa:
   - **Upload** gambar lokal → dikirim ke `POST /project/{id}/upload-image`
-  - **AI Generate** gambar dari prompt (via Flux AI)
-  - **Stock Search** gambar dari Unsplash
+  - **AI Generate** gambar dari prompt (via Flux AI) *(saat ini dinonaktifkan/dikomentar)*
+  - **Stock Search** gambar dari Unsplash *(saat ini dinonaktifkan/dikomentar)*
+
+**Injeksi Style pointer-events (BARU):**
+Setiap kali iframe selesai load, fungsi `injectEditorStyles` secara otomatis menyuntikkan `<style>` ke dalam `iframeDoc.head` via `onLoad` event. CSS ini mengatur:
+- Wrapper div (`.container`, `.row`, `.col`, dll.) → `pointer-events: none` agar kursor tembus
+- Elemen teks (`h1`–`h6`, `p`, `span`, dll.) → `pointer-events: auto`, `z-index: 10000`
+- Elemen gambar & `[data-bg-key]` → `pointer-events: auto`, `cursor: pointer`, `z-index: 10`
 
 **Mekanisme Simpan:**
 - Tombol "Save" aktif hanya jika ada perubahan (`changed === true`)
 - Klik Save → konfirmasi dialog
 - Eksekusi `PUT /project/{projectId}/update` dengan payload JSON (konten + gambar + theme)
 - Jika berhasil → iframe di-refresh dengan `?t={timestamp}` baru untuk cache busting
+
+**Auto-save setelah upload gambar:**
+Setelah upload gambar sukses, sistem langsung menjalankan `PUT /project/{projectId}/update` otomatis tanpa konfirmasi dialog — menjamin sinkronisasi path gambar ke database Supabase segera.
 
 ---
 
@@ -302,25 +318,60 @@ Struktur:
 - **Header**: Logo "Subarvibe" + ikon Command
 - **NavMain**: Link ke `/project`
 - **NavDocuments**: Daftar 7 proyek terbaru (dinamis dari Supabase)
+- **NavSecondary** *(BARU)*: Navigasi link sekunder generik (konfigurasi via props)
 - **Footer**: Info & avatar pengguna
 
 ### 8.2 ProjectDetailDrawer ([project-detail-drawer.tsx](./components/project-detail-drawer.tsx))
 
-Komponen `Sheet` (drawer dari kanan) shadcn/ui yang menampilkan detail proyek:
+Komponen `Sheet` (drawer dari kanan) shadcn/ui yang menampilkan detail proyek. **Telah diperbarui secara signifikan** dengan fitur baru:
+
+**Tampilan data:**
 - Thumbnail proyek
 - Nama proyek
 - Tanggal update & pembuatan
 - Deskripsi bisnis
-- Tombol aksi: Edit, Download, Delete
+
+**Fitur Publish ke Surge.sh (BARU):**
+- Tombol **"Publish"** memanggil `POST /project/{projectId}/publish` ke backend
+- Backend men-deploy website ke Surge.sh dan mengembalikan URL publik
+- URL disimpan di state lokal drawer (`publicUrl`) dan ditampilkan dalam input read-only + tombol copy
+- Jika proyek sudah pernah di-publish (`public_url` ada di Supabase), URL langsung ditampilkan tanpa perlu publish ulang
+- Tombol berganti menjadi **"Re-publish"** jika sudah ada URL
+- Indikator loading (`Loading03Icon` berputar) muncul selama proses publish
+- Copy URL ke clipboard dengan feedback visual 2 detik (ikon berubah ke `Tick01Icon`)
+
+**Tombol footer:**
+- Download Project → memanggil `handleDownloadProject`
+- Delete Project → membuka `DeleteProjectDialog`
 
 ### 8.3 ImageManagerModal ([image-manager-modal.tsx](./components/image-manager-modal.tsx))
 
-Modal dengan 3 tab untuk manajemen gambar:
-1. **Upload** — upload file lokal langsung ke server FastAPI
-2. **AI Generate** — prompt teks untuk Flux AI
-3. **Stock Search** — pencarian Unsplash
+Modal dengan tab untuk manajemen gambar. **Status tab saat ini:**
+1. **Upload** *(AKTIF)* — upload file lokal langsung ke server FastAPI, dengan cache-busting `?v={timestamp}` pada URL hasil upload
+2. **AI Generate** *(DINONAKTIFKAN — dikomentar)* — placeholder menggunakan Picsum, belum terhubung ke endpoint nyata
+3. **Stock Search** *(DINONAKTIFKAN — dikomentar)* — placeholder menggunakan Unsplash source URL, belum terhubung
 
-### 8.4 fetchWithAuth ([lib/api-client.ts](./lib/api-client.ts))
+### 8.4 NavSecondary ([nav-secondary.tsx](./components/nav-secondary.tsx)) — BARU
+
+Komponen navigasi sekunder untuk sidebar. Menerima array `items` (title, url, icon) via props dan merendernya sebagai `SidebarMenu`. Digunakan untuk link-link tambahan yang tidak masuk kategori main nav atau documents.
+
+### 8.5 NewProjectCard ([new-project-card.tsx](./components/new-project-card.tsx)) — BARU
+
+Komponen kartu proyek dengan desain UI yang lebih baru — masih menggunakan **data statis hardcoded** ("Project A"). Belum dihubungkan ke state atau data Supabase. Kemungkinan merupakan komponen iterasi desain yang sedang dikerjakan.
+
+Fitur UI: thumbnail placeholder (ikon gambar), dropdown menu (Open/Download/Edit/Delete), hover effect pada border, `CardTitle` + `CardDescription`.
+
+### 8.6 NewProjectPage ([new-project.tsx](./components/new-project.tsx)) — BARU
+
+Halaman create proyek versi lama (bukan wizard carousel). Menampilkan:
+- **Progress stepper** horizontal 3 langkah dengan garis progress
+- Tombol "Create your Project" yang membuka `CreateDialog`
+- **Accordion** detail 3 bagian: Describe (form bisnis), Generating (tabel progres), Finalization
+- Semua state masih hardcoded/dummy, belum terhubung ke backend
+
+> **Catatan:** Komponen ini terlihat merupakan prototipe lama yang digantikan oleh `CreateCarousel`. Kemungkinan tidak dirender di rute aktif manapun saat ini.
+
+### 8.7 fetchWithAuth ([lib/api-client.ts](./lib/api-client.ts))
 
 **Wrapper HTTP client** yang secara otomatis:
 1. Mengambil sesi aktif dari cookie Supabase
@@ -331,7 +382,12 @@ Modal dengan 3 tab untuk manajemen gambar:
 
 Semua komunikasi ke FastAPI backend wajib melalui fungsi ini.
 
-### 8.5 handleDownloadProject ([lib/download-project.ts](./lib/download-project.ts))
+### 8.8 fetchProjectColumns ([lib/fetch_columns.ts](./lib/fetch_columns.ts))
+
+Utility Supabase untuk mengambil detail satu proyek berdasarkan ID. Kolom yang di-fetch:
+`business_name`, `created_at`, `updated_at`, `content_data`, `folder_path`, **`public_url`** *(kolom baru — untuk status publish Surge.sh)*
+
+### 8.9 handleDownloadProject ([lib/download-project.ts](./lib/download-project.ts))
 
 Utility yang:
 1. Memanggil `GET /project/{id}/download` (dengan auth)
@@ -358,6 +414,7 @@ Utility yang:
 | `updated_at` | timestamptz | Waktu update terakhir |
 | `folder_path` | text | Nama folder fisik di server FastAPI |
 | `content_data` | jsonb | Data konten bisnis (deskripsi, dll.) |
+| `public_url` | text | URL publik Surge.sh setelah publish *(kolom baru)* |
 
 ### 9.2 FastAPI Backend (via Ngrok)
 
@@ -371,6 +428,7 @@ Backend berjalan di mesin lokal dan diekspos ke internet melalui **Ngrok**. Semu
 | `/project/{projectId}/update` | PUT | Simpan perubahan edit |
 | `/project/{projectId}/upload-image` | POST | Upload gambar baru |
 | `/project/{projectId}/download` | GET | Download project sebagai ZIP |
+| `/project/{projectId}/publish` | POST | **[BARU]** Deploy website ke Surge.sh, return `{ url }` |
 | `/projects/{folderPath}/index.html` | GET (static) | File website hasil generasi |
 | `/projects/{folderPath}/data.json` | GET (static) | Data JSON konten website |
 | `/projects/{folderPath}/thumbnail.jpg` | GET (static) | Screenshot thumbnail proyek |
@@ -383,14 +441,6 @@ Backend berjalan di mesin lokal dan diekspos ke internet melalui **Ngrok**. Semu
 
 Backend menggunakan **nama folder fisik** (contoh: `kopi_nusantara_xyz`) untuk menyimpan file website, sedangkan frontend menggunakan **UUID** Supabase sebagai identifier di URL. Setiap kali frontend perlu membangun URL untuk iframe atau thumbnail, ia harus terlebih dahulu mengquery Supabase untuk mendapatkan `folder_path` dari `project_id`.
 
-```
-URL Browser: /preview?id=uuid-1234
-              ↓ Query Supabase
-folder_path: "kopi_nusantara_xyz"
-              ↓ Build iframe URL
-iframe src: https://ngrok.../projects/kopi_nusantara_xyz/index.html
-```
-
 ### 10.2 Komunikasi Iframe ↔ Parent (postMessage)
 
 Pada halaman edit, website yang dirender di dalam iframe dimodifikasi oleh backend untuk memiliki script edit mode. Komunikasi dua arah terjadi via `window.postMessage`:
@@ -400,7 +450,11 @@ Pada halaman edit, website yang dirender di dalam iframe dimodifikasi oleh backe
 [Next.js Parent] --UPDATE_IMAGE--> [Website dalam iframe]
 ```
 
-### 10.3 Cache Busting
+### 10.3 Injeksi Style ke Iframe (BARU)
+
+Setiap kali iframe selesai load (`onLoad`), parent menyuntikkan `<style>` langsung ke `iframeDoc.head`. Ini memungkinkan override CSS pada website yang diload — khususnya untuk mengatur `pointer-events` agar kursor pengguna bisa menembus wrapper div transparan dan menyentuh elemen yang benar-benar terlihat.
+
+### 10.4 Cache Busting
 
 Untuk menghindari browser cache pada iframe dan thumbnail, semua URL yang bisa berubah ditambahkan parameter `?t={timestamp}`:
 
@@ -410,7 +464,7 @@ const iframeUrl = `.../${folderPath}/index.html?t=${iframeRefreshKey}`
 
 `iframeRefreshKey` diperbarui setiap kali ada operasi save.
 
-### 10.4 Polling Status Generasi
+### 10.5 Polling Status Generasi
 
 Setelah submit generasi, frontend tidak menggunakan WebSocket — melainkan **polling sederhana** dengan `setInterval` implisit via loop `while(true)` dengan `await setTimeout(5000)`:
 
@@ -425,6 +479,10 @@ while (true) {
 }
 ```
 
+### 10.6 Auto-save setelah Upload Gambar (BARU)
+
+Setelah upload gambar berhasil, `handleSelectImage` di `edit-project.tsx` secara otomatis menjalankan `PUT /project/{projectId}/update` tanpa menunggu konfirmasi dari pengguna. Ini menghindari desync antara path gambar di Supabase dan file fisik di server — terutama ketika ekstensi file berubah (contoh: `.png` → `.jpg`).
+
 ---
 
 ## 11. Catatan Pengembangan & Keterbatasan Saat Ini
@@ -433,10 +491,12 @@ while (true) {
 |---|---|
 | **Backend Hosting** | Berjalan di mesin lokal developer, diekspos via Ngrok (URL bisa berubah sewaktu-waktu) |
 | **URL Ngrok** | Hard-coded di `lib/api-client.ts` dan beberapa komponen — perlu diperbarui manual jika URL Ngrok berubah |
-| **Image Manager - AI & Stock Tab** | Masih menggunakan URL placeholder (Picsum & Unsplash) — belum terhubung ke endpoint backend nyata |
+| **Image Manager - AI & Stock Tab** | Dikomentar/dinonaktifkan — masih ada kode placeholder menggunakan Picsum & Unsplash source URL |
 | **Dashboard Utama (`/`)** | Menggunakan data statis (`data.json`) untuk demo — belum terhubung ke Supabase |
 | **Dark Mode** | Hanya dark mode yang ada; tidak ada mekanisme toggle ke light mode meski `next-themes` sudah terpasang |
-| **Error Handling** | Sebagian besar masih menggunakan `alert()` primitif — perlu diganti ke toast `sonner` yang konsisten |
+| **Error Handling** | Sebagian sudah menggunakan `sonner` toast, tapi `ImageManagerModal` masih menggunakan `alert()` primitif |
+| **new-project.tsx & new-project-card.tsx** | Komponen iterasi lama/prototipe, menggunakan data hardcoded, belum terintegrasi ke routing aktif |
+| **pointer-events injection** | Hanya menonaktifkan kelas `.container`, `.row`, `.col`, `.wrapper`, `.text-center` — template dengan struktur berbeda mungkin perlu penyesuaian selector |
 
 ---
 
@@ -460,8 +520,8 @@ npm run dev
 # http://localhost:3000
 ```
 
-> **Penting**: Fitur inti (generasi website, edit, preview) membutuhkan backend FastAPI yang berjalan dan URL Ngrok yang aktif di `lib/api-client.ts`.
+> **Penting**: Fitur inti (generasi website, edit, preview, publish) membutuhkan backend FastAPI yang berjalan dan URL Ngrok yang aktif di `lib/api-client.ts`.
 
 ---
 
-*Dokumen ini digenerate berdasarkan analisis source code pada: 2026-06-29*
+*Dokumen ini diperbarui berdasarkan analisis source code pada: 2026-07-03*

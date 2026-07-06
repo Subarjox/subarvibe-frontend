@@ -6,7 +6,13 @@ import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ImageManagerModal } from "./image-manager-modal"
-import { ProjectDetailDrawer } from "./project-detail-drawer"
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import { fetchWithAuth } from "@/lib/api-client" // [Certain] Injeksi Klien Berotentikasi
 import {
     Tooltip,
@@ -54,6 +60,36 @@ export default function EditProjectPage() {
 
     const iframeRef = useRef<HTMLIFrameElement>(null)
 
+    // 5a. Injeksi style pointer-events ke dalam iframe setiap kali iframe selesai load
+    const injectEditorStyles = () => {
+        const iframeDoc = iframeRef.current?.contentDocument;
+        if (!iframeDoc || !iframeDoc.head) return;
+
+        const style = iframeDoc.createElement('style');
+        style.innerHTML = `
+            /* 1. Lumpuhkan SELURUH div pembungkus transparan agar kursor tembus ke belakang */
+            .container, .row, .col, .wrapper, .text-center {
+                pointer-events: none !important;
+            }
+
+            /* 2. Kembalikan nyawa interaksi HANYA pada elemen yang terlihat (Teks & Tombol) */
+            h1, h2, h3, h4, h5, h6, p, span, a, button, input {
+                pointer-events: auto !important;
+                position: relative !important;
+                z-index: 10000 !important;
+            }
+
+            /* 3. Pastikan elemen latar belakang (yang punya data-bg-key) bisa diklik */
+            [data-bg-key], img {
+                pointer-events: auto !important;
+                cursor: pointer !important;
+                position: relative !important;
+                z-index: 10 !important;
+            }
+        `;
+        iframeDoc.head.appendChild(style);
+    }
+
     // 4. Tarik Translasi Folder dan Data JSON Asli
     useEffect(() => {
         if (!projectId) return;
@@ -82,9 +118,13 @@ export default function EditProjectPage() {
                 setFolderPath(actualFolderPath);
 
                 // B. Sedot Source of Truth dari folder statis FastAPI menggunakan NAMA FOLDER ASLI
-                const res = await fetch(`https://diligent-overpay-stingray.ngrok-free.dev/projects/${actualFolderPath}/data.json`, {
+                const timestamp = new Date().getTime();
+                const res = await fetch(`https://diligent-overpay-stingray.ngrok-free.dev/projects/${actualFolderPath}/data.json?t=${timestamp}`, {
                     headers: {
-                        "ngrok-skip-browser-warning": "true"
+                        "ngrok-skip-browser-warning": "true",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0"
                     }
                 });
 
@@ -92,8 +132,8 @@ export default function EditProjectPage() {
                     const data = await res.json();
                     setProjectData({
                         template_id: data.template_id || "unknown",
-                        content: data.content_dict || {},
-                        images: data.image_results || {},
+                        content: data.placeholders || {},
+                        images: data.images || {},
                         theme: "default"
                     });
                 } else {
@@ -306,7 +346,7 @@ export default function EditProjectPage() {
                                 </button>
                             </TooltipTrigger>
                             <TooltipContent side="right" className="max-w-[220px]">
-                                <div className="text-xs font-medium">Click any text or any images on your website to edit it</div>
+                                <div className="text-xs font-medium">Click any text or any images on your website to edit it. Some of the image cant be clicked, click the change image button to change it</div>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -314,14 +354,61 @@ export default function EditProjectPage() {
 
                 {/* Right */}
                 <div className="flex items-center gap-5">
-                    <ProjectDetailDrawer
-                        projectId={projectId}
-                        trigger={
-                            <button className="text-sm font-medium hover:opacity-80 hover:underline">
-                                Project Details
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <button className="text-sm font-medium hover:opacity-80 hover:underline text-sky-500">
+                                Change Image
                             </button>
-                        }
-                    />
+                        </SheetTrigger>
+                        <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto bg-card p-6 border-l border-border">
+                            <SheetHeader className="mb-6">
+                                <SheetTitle className="text-xl font-bold">Manajemen Gambar</SheetTitle>
+                                <p className="text-xs text-muted-foreground mt-1">Daftar ini ditarik langsung secara dinamis dari Source of Truth</p>
+                            </SheetHeader>
+
+                            {/* [Certain] Render form HANYA jika projectData dan properti images tersedia */}
+                            {projectData && projectData.images && Object.keys(projectData.images).length > 0 ? (
+                                <div className="flex flex-col gap-6">
+                                    <div className="space-y-4">
+                                        {Object.entries(projectData.images).map(([key, value]) => (
+                                            <div key={key} className="p-4 rounded-xl border border-border bg-muted/30 flex flex-col gap-3">
+                                                <label className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+                                                    {key.replace(/-/g, ' ')}
+                                                </label>
+                                                <div className="flex flex-col gap-3">
+                                                    <img
+                                                        src={value && !value.startsWith("http") && folderPath ? `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/${value}?v=${iframeRefreshKey}` : `${value}?v=${iframeRefreshKey}`}
+                                                        alt={key}
+                                                        className="w-full h-32 rounded-lg object-cover border border-border bg-neutral-800 shrink-0"
+                                                    />
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="w-full text-xs font-semibold bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border-0"
+                                                        onClick={() => {
+                                                            setCurrentImageKey(key);
+                                                            let rawSrc = value || "";
+                                                            if (rawSrc && !rawSrc.startsWith("http") && folderPath) {
+                                                                rawSrc = `https://diligent-overpay-stingray.ngrok-free.dev/projects/${folderPath}/${rawSrc}`;
+                                                            }
+                                                            setCurrentImageSrc(rawSrc);
+                                                            setIsImageModalOpen(true);
+                                                        }}
+                                                    >
+                                                        Ubah Gambar
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-sm text-muted-foreground">
+                                    ⚠️ Tidak ada data gambar yang ditemukan di dalam data.json proyek ini.
+                                </div>
+                            )}
+                        </SheetContent>
+                    </Sheet>
 
                     <Button
                         disabled={!changed || isSaving || !projectData}
@@ -342,6 +429,7 @@ export default function EditProjectPage() {
                         src={iframeUrl}
                         className="absolute inset-0 h-full w-full border-0 bg-white"
                         title="Website Editor"
+                        onLoad={injectEditorStyles}
                     />
                 </div>
             </div>

@@ -124,10 +124,10 @@ export function ImageManagerModal({
           )}
 
           <Tabs defaultValue="upload" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1">
               <TabsTrigger value="upload">Upload</TabsTrigger>
-              <TabsTrigger value="ai">AI Generate</TabsTrigger>
-              <TabsTrigger value="stock">Stock Search</TabsTrigger>
+              {/* <TabsTrigger value="ai">AI Generate</TabsTrigger>
+              <TabsTrigger value="stock">Stock Search</TabsTrigger> */}
             </TabsList>
 
             {/* TAB: UPLOAD FISIK */}
@@ -150,7 +150,7 @@ export function ImageManagerModal({
             </TabsContent>
 
             {/* TAB: AI GENERATE */}
-            <TabsContent value="ai" className="mt-4 flex flex-col gap-4">
+            {/* <TabsContent value="ai" className="mt-4 flex flex-col gap-4">
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="prompt">Image Prompt</Label>
                 <div className="flex gap-2">
@@ -169,10 +169,10 @@ export function ImageManagerModal({
               <p className="text-xs text-muted-foreground">
                 Powered by Flux AI. This may take a few seconds.
               </p>
-            </TabsContent>
+            </TabsContent> */}
 
             {/* TAB: STOCK SEARCH */}
-            <TabsContent value="stock" className="mt-4 flex flex-col gap-4">
+            {/* <TabsContent value="stock" className="mt-4 flex flex-col gap-4">
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="search">Search Keywords</Label>
                 <div className="flex gap-2">
@@ -192,7 +192,7 @@ export function ImageManagerModal({
               <p className="text-xs text-muted-foreground">
                 Search through our curated Unsplash collection.
               </p>
-            </TabsContent>
+            </TabsContent> */}
 
           </Tabs>
         </div>
